@@ -1407,17 +1407,9 @@ const PALETTE=['#00e5a0','#ff6b35','#4d9fff','#ffd32a','#a855f7','#ec4899','#14b
 const EMOJIS=['🏠','🚗','🍔','🛒','💊','✈️','🎮','🎬','💼','📚','👗','🏋️','☕','🐾','🎓','💡','🔧','🌿','🎵','🏖️','🎁','📱','💻','🍕','🏦','💰','🛡️','📊','🎯','🧴','🏥','⚡','🚌','🎨','🌍','🏪','🛍️','📅','🤝','🌙'];
 const DEFAULT_BANKS=[{name:'PicPay',color:'#21c35e'},{name:'Nubank',color:'#7c3aed'},{name:'99Pay',color:'#f97316'},{name:'Caixa',color:'#2563eb'}];
 const DEFAULT_CATS=[
-  {name:'Despesas Fixas',pct:44,bank:'Caixa',color:'#00e5a0',emoji:'🏠',meta:0,tipoCategoria:'gasto'},
-  {name:'Reserva Emergência',pct:5,bank:'Nubank',color:'#ff6b35',emoji:'🛡️',meta:0,tipoCategoria:'investimento'},
-  {name:'Saúde',pct:3,bank:'PicPay',color:'#4d9fff',emoji:'💊',meta:0,tipoCategoria:'gasto'},
-  {name:'Viagens',pct:3,bank:'PicPay',color:'#ffd32a',emoji:'✈️',meta:0,tipoCategoria:'gasto'},
-  {name:'Reserva Backup',pct:10,bank:'Caixa',color:'#a855f7',emoji:'💰',meta:0,tipoCategoria:'investimento'},
-  {name:'Investimento',pct:5,bank:'Nubank',color:'#ec4899',emoji:'📊',meta:0,tipoCategoria:'investimento'},
-  {name:'Saldo Banco',pct:5,bank:'PicPay',color:'#14b8a6',emoji:'🏦',meta:0,tipoCategoria:'investimento'},
-  {name:'Lazer',pct:8,bank:'99Pay',color:'#f97316',emoji:'🎮',meta:0,tipoCategoria:'gasto'},
-  {name:'Transporte',pct:4,bank:'99Pay',color:'#6366f1',emoji:'🚗',meta:0,tipoCategoria:'gasto'},
-  {name:'Dia a Dia',pct:3,bank:'PicPay',color:'#84cc16',emoji:'🛒',meta:0,tipoCategoria:'gasto'},
-  {name:'Caixa CEF',pct:10,bank:'Caixa',color:'#22d3ee',emoji:'🏦',meta:0,tipoCategoria:'investimento'},
+  {name:'Despesas Fixas',pct:50,bank:'Caixa',color:'#00e5a0',emoji:'🏠',meta:0,tipoCategoria:'gasto'},
+  {name:'Despesas Variáveis',pct:30,bank:'99Pay',color:'#4d9fff',emoji:'🛒',meta:0,tipoCategoria:'gasto'},
+  {name:'Reserva de Emergência',pct:20,bank:'Nubank',color:'#a855f7',emoji:'🛡️',meta:0,tipoCategoria:'investimento'},
 ];
 
 // ═══════════════════════
@@ -2726,7 +2718,7 @@ function renderProjecaoSVG(pts,n){
   svg.innerHTML=`<defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4d9fff" stop-opacity=".4"/><stop offset="100%" stop-color="#4d9fff" stop-opacity="0"/></linearGradient></defs>${grid}<polygon points="${fill}" fill="url(#pg)"/><polyline points="${svgPts}" fill="none" stroke="var(--accent3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${ylabels}${xlabels}<circle cx="${fx}" cy="${fy}" r="5" fill="var(--accent3)"/><text x="${fx}" y="${fy-10}" fill="var(--accent3)" font-size="11" text-anchor="middle" font-weight="bold">${fmtBRL(pts[n]).replace('R$ ','R$')}</text>`;
 }
 function renderReserva(){
-  const md=getMD();const s=md.salary||0;const reservaCats=['Reserva Emergência','Reserva Backup','Caixa CEF','Investimento','Saldo Banco'];
+  const md=getMD();const s=md.salary||0;const reservaCats=['Reserva de Emergência'];
   let totalRes=0;Object.entries(state.months).forEach(([,m])=>{reservaCats.forEach(name=>{const c=state.categories.find(x=>x.name===name);if(c)totalRes+=(m.salary||0)*c.pct/100})});
   const mi=document.getElementById('res-meta-input');const metaC=parseFloat(mi.value)||0;state.inv.resMeta=metaC;save();
   const metaF=metaC>0?metaC:(s*6||0);const pct=metaF>0?Math.min(totalRes/metaF*100,100):0;
