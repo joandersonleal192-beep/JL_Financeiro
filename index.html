@@ -817,6 +817,7 @@ function closeMobileMenu(){document.getElementById('mob-menu').classList.remove(
     <div class="chart-card"><h3>Comparativo vs Mês Anterior</h3><div id="dash-comparativo"><div class="empty-state" style="padding:.7rem">Sem dados anteriores</div></div></div>
     <div class="chart-card"><h3>Por Banco</h3><div id="dash-banks"></div></div>
   </div>
+
   <div class="chart-card" style="margin-bottom:1.3rem">
     <h3>Evolução — Receita vs Gastos vs Investimentos <span style="font-size:.63rem;color:var(--muted)">últimos 6 meses</span></h3>
     <svg id="line-chart-svg" width="100%" height="160" viewBox="0 0 700 160" style="overflow:visible"></svg>
@@ -1728,19 +1729,44 @@ function renderDashboard(){
 // GRÁFICO EVOLUÇÃO DO SCORE
 // ═══════════════════════
 function renderScoreEvolution(){
-  const entries=Object.entries(state.months)
-    .filter(([,m])=>m.salary>0||m.compras.length>0)
-    .sort((a,b)=>a[0].localeCompare(b[0]))
-    .slice(-12);
-
   const svg=document.getElementById('score-chart-svg');
   const legendWrap=document.getElementById('score-legend-wrap');
   const lblMeses=document.getElementById('lbl-score-meses');
-  if(!svg||!entries.length){
-    if(svg)svg.innerHTML='<text x="350" y="65" fill="var(--muted)" text-anchor="middle" font-size="13" font-family="DM Mono,monospace">Sem histórico ainda</text>';
+  const ff4=JSON.parse(localStorage.getItem('ff4_months')||'{}');
+
+  // limite = mês que o usuário está visualizando
+  const chaveAtual=`${state.currentYear}-${String(state.currentMonth+1).padStart(2,'0')}`;
+
+  // pega todos os meses com dados até o mês visualizado
+  const todasChaves=new Set([...Object.keys(state.months),...Object.keys(ff4)]);
+  const comDados=[...todasChaves].filter(k=>{
+    if(k>chaveAtual) return false;
+    const m=state.months[k]||ff4[k]||{};
+    return (m.salary>0)||(m.compras&&m.compras.length>0);
+  }).sort();
+
+  if(!svg){return;}
+  if(!comDados.length){
+    svg.innerHTML='<text x="350" y="65" fill="var(--muted)" text-anchor="middle" font-size="13" font-family="DM Mono,monospace">Sem histórico ainda</text>';
     if(legendWrap)legendWrap.innerHTML='';
     return;
   }
+
+  // gera sequência contínua do primeiro mês com dados até o mês visualizado
+  const primeiro=comDados[0];
+  const seq=[];
+  let [yi,mi]=[parseInt(primeiro.split('-')[0]),parseInt(primeiro.split('-')[1])-1];
+  const [yf,mf]=[state.currentYear,state.currentMonth];
+  while((yi<yf)||(yi===yf&&mi<=mf)){
+    seq.push(`${yi}-${String(mi+1).padStart(2,'0')}`);
+    mi++;if(mi>11){mi=0;yi++;}
+  }
+  const chavesSel=seq.slice(-6);
+
+  const entries=chavesSel.map(key=>{
+    const m=state.months[key]||ff4[key]||{salary:0,extras:[],compras:[]};
+    return[key,m];
+  });
 
   const scores=entries.map(([,m])=>calcScore(m));
   if(lblMeses)lblMeses.textContent=`últimos ${entries.length} meses`;
@@ -1751,7 +1777,6 @@ function renderScoreEvolution(){
   const toX=i=>padL+(n>1?i*(cW/(n-1)):cW/2);
   const toY=v=>padT+cH-Math.min(Math.max(v,0),100)/100*cH;
 
-  // grid lines at 25, 50, 75, 100
   let grid='';
   [0,25,50,75,100].forEach(v=>{
     const y=toY(v);
@@ -1759,7 +1784,6 @@ function renderScoreEvolution(){
     grid+=`<text x="${padL-5}" y="${y+4}" fill="var(--muted)" font-size="9" text-anchor="end" font-family="DM Mono,monospace">${v}</text>`;
   });
 
-  // zone fills
   const yA=toY(100),yB=toY(80),yC=toY(60),yD=toY(40),yE=toY(0);
   const zones=`
     <rect x="${padL}" y="${yA}" width="${cW}" height="${yB-yA}" fill="rgba(0,229,160,.06)"/>
@@ -1767,33 +1791,24 @@ function renderScoreEvolution(){
     <rect x="${padL}" y="${yC}" width="${cW}" height="${yD-yC}" fill="rgba(255,211,42,.05)"/>
     <rect x="${padL}" y="${yD}" width="${cW}" height="${yE-yD}" fill="rgba(255,71,87,.05)"/>`;
 
-  // area fill under line
   const ptStr=scores.map((s,i)=>`${toX(i)},${toY(s)}`).join(' ');
   const areaClose=`${toX(n-1)},${toY(0)} ${toX(0)},${toY(0)}`;
   const area=`<polygon points="${ptStr} ${areaClose}" fill="url(#sg)" opacity=".7"/>`;
-
-  // line
   const line=`<polyline points="${ptStr}" fill="none" stroke="var(--accent3)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
 
-  // dots + labels
   let dots='';
   scores.forEach((s,i)=>{
     const cx=toX(i),cy=toY(s);
     const col=scoreColor(s);
     dots+=`<circle cx="${cx}" cy="${cy}" r="4" fill="${col}" stroke="var(--surface)" stroke-width="1.5"/>`;
-    // score label above dot
     dots+=`<text x="${cx}" y="${cy-8}" fill="${col}" font-size="9" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700">${s}</text>`;
   });
 
-  // x-axis month labels
   let xlabels='';
   entries.forEach(([key],i)=>{
-    // show every label if <=6, else every other
-    if(entries.length<=6||i%2===0||(i===entries.length-1)){
-      const[y,mo]=key.split('-');
-      const lbl=MONTHS[parseInt(mo)-1].substring(0,3)+(entries.length>6?'':' '+y.substring(2));
-      xlabels+=`<text x="${toX(i)}" y="${H-4}" fill="var(--muted)" font-size="9" text-anchor="middle" font-family="DM Mono,monospace">${lbl}</text>`;
-    }
+    const[y,mo]=key.split('-');
+    const lbl=MONTHS[parseInt(mo)-1].substring(0,3)+(entries.length>6?'':' '+y.substring(2));
+    xlabels+=`<text x="${toX(i)}" y="${H-4}" fill="var(--muted)" font-size="9" text-anchor="middle" font-family="DM Mono,monospace">${lbl}</text>`;
   });
 
   svg.innerHTML=`<defs>
@@ -1804,7 +1819,6 @@ function renderScoreEvolution(){
   </defs>
   ${zones}${grid}${area}${line}${dots}${xlabels}`;
 
-  // legend
   if(legendWrap){
     legendWrap.innerHTML=[
       {col:'var(--green)',lbl:'A — Excelente (80+)'},
@@ -1856,28 +1870,52 @@ function renderPie(s){
 
 function renderLineChart(){
   const svg=document.getElementById('line-chart-svg');
-  const entries=[];
-  for(let i=5;i>=0;i--){
-    // calcula mês/ano corretos a partir do mês atual
-    let m=state.currentMonth-i,y=state.currentYear;
-    if(m<0){m+=12;y--}
-    const key=`${y}-${String(m+1).padStart(2,'0')}`;
-    // tenta ff5 e ff4 (migração de versão anterior)
-    const md=state.months[key]
-      ||JSON.parse(localStorage.getItem('ff4_months')||'{}')[key]
-      ||{salary:0,extras:[],compras:[]};
-    // label mostra mês abreviado — se for janeiro mostra o ano também
-    const lbl=m===0?`Jan/${y}`:MONTHS[m].substring(0,3);
-    entries.push({label:lbl,key,receita:getTotalReceita(md),gasto:getGastos(md),inv:getInvestimentos(md)});
+  const ff4=JSON.parse(localStorage.getItem('ff4_months')||'{}');
+
+  // limite = mês que o usuário está visualizando
+  const chaveAtual=`${state.currentYear}-${String(state.currentMonth+1).padStart(2,'0')}`;
+
+  // pega todos os meses com dados até o mês visualizado
+  const todasChaves=new Set([...Object.keys(state.months),...Object.keys(ff4)]);
+  const comDados=[...todasChaves].filter(k=>{
+    if(k>chaveAtual) return false; // ignora meses além do visualizado
+    const m=state.months[k]||ff4[k]||{};
+    return (m.salary>0)||(m.compras&&m.compras.length>0);
+  }).sort();
+
+  // se não há dados, mostra só o mês atual navegado
+  if(!comDados.length) comDados.push(chaveAtual);
+
+  // gera sequência contínua do primeiro mês com dados até o mês visualizado
+  const primeiro=comDados[0];
+  const seq=[];
+  let [yi,mi]=[parseInt(primeiro.split('-')[0]),parseInt(primeiro.split('-')[1])-1];
+  const [yf,mf]=[state.currentYear,state.currentMonth];
+  while((yi<yf)||(yi===yf&&mi<=mf)){
+    seq.push(`${yi}-${String(mi+1).padStart(2,'0')}`);
+    mi++;if(mi>11){mi=0;yi++;}
   }
-  const allVals=entries.flatMap(e=>[e.receita,e.gasto,e.inv]);const maxV=Math.max(...allVals,1);
+  const chavesSel=seq.slice(-6);
+
+  const entries=chavesSel.map(key=>{
+    const [y,mo]=key.split('-');
+    const m=parseInt(mo)-1;
+    const md=state.months[key]||ff4[key]||{salary:0,extras:[],compras:[]};
+    const lbl=m===0?`Jan/${y}`:MONTHS[m].substring(0,3);
+    return{label:lbl,receita:getTotalReceita(md),gasto:getGastos(md),inv:getInvestimentos(md)};
+  });
+
+  const n=entries.length;
+  const allVals=entries.flatMap(e=>[e.receita,e.gasto,e.inv]);
+  const maxV=Math.max(...allVals,1);
   const W=700,H=160,px=45,py=15,cW=W-px*2,cH=H-py*2;
-  const toX=i=>px+i*(cW/5);const toY=v=>py+cH-(v/maxV)*cH;
+  const toX=i=>px+(n>1?i*(cW/(n-1)):cW/2);
+  const toY=v=>py+cH-(v/maxV)*cH;
   let grid='';for(let i=0;i<=3;i++){const y2=py+i*(cH/3);grid+=`<line x1="${px}" y1="${y2}" x2="${px+cW}" y2="${y2}" stroke="var(--border)" stroke-width="1"/>`}
   const recPts=entries.map((e,i)=>`${toX(i)},${toY(e.receita)}`).join(' ');
   const gastPts=entries.map((e,i)=>`${toX(i)},${toY(e.gasto)}`).join(' ');
   const invPts=entries.map((e,i)=>`${toX(i)},${toY(e.inv)}`).join(' ');
-  const recFill=`${px},${py+cH} `+recPts+` ${toX(5)},${py+cH}`;
+  const recFill=`${toX(0)},${py+cH} `+recPts+` ${toX(n-1)},${py+cH}`;
   const xlabels=entries.map((e,i)=>`<text x="${toX(i)}" y="${H-2}" fill="var(--muted)" font-size="10" text-anchor="middle">${e.label}</text>`).join('');
   svg.innerHTML=`<defs><linearGradient id="recG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00e5a0" stop-opacity=".25"/><stop offset="100%" stop-color="#00e5a0" stop-opacity="0"/></linearGradient></defs>${grid}<polygon points="${recFill}" fill="url(#recG)"/><polyline points="${recPts}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${gastPts}" fill="none" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,3"/><polyline points="${invPts}" fill="none" stroke="var(--purple)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4,4"/>${xlabels}${entries.map((e,i)=>`<circle cx="${toX(i)}" cy="${toY(e.receita)}" r="3.5" fill="var(--accent)"/><circle cx="${toX(i)}" cy="${toY(e.gasto)}" r="3.5" fill="var(--danger)"/><circle cx="${toX(i)}" cy="${toY(e.inv)}" r="3.5" fill="var(--purple)"/>`).join('')}`;
 }
