@@ -602,6 +602,62 @@ header{display:flex;align-items:center;justify-content:space-between;padding:.85
   </div>
 </div>
 
+<style>
+/* MENU HAMBÚRGUER MOBILE */
+.hamburger-btn{display:none;background:var(--card);border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:1.1rem;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.hamburger-btn:hover{border-color:var(--accent)}
+.mobile-menu-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:400;backdrop-filter:blur(3px)}
+.mobile-menu-overlay.open{display:block}
+.mobile-menu{position:fixed;top:0;right:-100%;width:min(280px,85vw);height:100vh;background:var(--surface);border-left:1px solid var(--border2);z-index:401;transition:right .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
+.mobile-menu.open{right:0}
+.mobile-menu-header{padding:1.1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.mobile-menu-header span{font-family:'Syne',sans-serif;font-weight:800;font-size:.88rem}
+.mobile-menu-close{background:none;border:none;color:var(--muted2);cursor:pointer;font-size:1.1rem;padding:.2rem .4rem;border-radius:6px}
+.mobile-menu-body{padding:.8rem .9rem;display:flex;flex-direction:column;gap:.45rem}
+.mobile-menu-btn{width:100%;text-align:left;background:var(--card);border:1px solid var(--border);color:var(--text);padding:.7rem 1rem;border-radius:10px;font-family:'DM Mono';font-size:.8rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.6rem}
+.mobile-menu-btn:hover{border-color:var(--border2);background:var(--card2)}
+.mobile-menu-btn.accent{color:var(--accent);border-color:rgba(0,229,160,.3);background:rgba(0,229,160,.06)}
+.mobile-menu-btn.blue{color:var(--accent3);border-color:rgba(77,159,255,.3);background:rgba(77,159,255,.06)}
+.mobile-menu-btn.voice-m{color:var(--accent);border-color:rgba(0,229,160,.3);background:rgba(0,229,160,.08)}
+.mobile-menu-divider{height:1px;background:var(--border);margin:.3rem 0}
+@media(max-width:768px){
+  .hamburger-btn{display:flex}
+  .header-desktop-actions{display:none}
+}
+@media(min-width:769px){
+  .hamburger-btn{display:none}
+  .mobile-menu-overlay,.mobile-menu{display:none!important}
+  .header-desktop-actions{display:flex}
+}
+</style>
+
+<!-- MENU MOBILE -->
+<div class="mobile-menu-overlay" id="mob-overlay" onclick="closeMobileMenu()"></div>
+<div class="mobile-menu" id="mob-menu">
+  <div class="mobile-menu-header">
+    <span>⚙️ Menu</span>
+    <button class="mobile-menu-close" onclick="closeMobileMenu()">✕</button>
+  </div>
+  <div class="mobile-menu-body">
+    <button class="mobile-menu-btn voice-m" onclick="closeMobileMenu();toggleVoice()">🎙️ Assistente de Voz</button>
+    <button class="mobile-menu-btn accent" onclick="closeMobileMenu();openSettings()">⚙ Categorias</button>
+    <div class="mobile-menu-divider"></div>
+    <button class="mobile-menu-btn" onclick="closeMobileMenu();openShareModal()">🔗 Compartilhar</button>
+    <button class="mobile-menu-btn blue" onclick="closeMobileMenu();openBackupModal()">🔒 Backup</button>
+    <button class="mobile-menu-btn" onclick="closeMobileMenu();exportPDF()">↓ Exportar PDF</button>
+    <button class="mobile-menu-btn" onclick="closeMobileMenu();exportCSV()">↓ Exportar CSV</button>
+    <div class="mobile-menu-divider"></div>
+    <button class="mobile-menu-btn" onclick="closeMobileMenu();openPwaModal()">📱 Instalar como App</button>
+    <button class="mobile-menu-btn" onclick="closeMobileMenu();openTutorial()">❓ Tutorial</button>
+    <button class="mobile-menu-btn" onclick="closeMobileMenu();toggleTheme()" id="theme-btn-mob">🌙 Alternar Tema</button>
+  </div>
+</div>
+
+<script>
+function openMobileMenu(){document.getElementById('mob-menu').classList.add('open');document.getElementById('mob-overlay').classList.add('open')}
+function closeMobileMenu(){document.getElementById('mob-menu').classList.remove('open');document.getElementById('mob-overlay').classList.remove('open')}
+</script>
+
 <header>
   <div class="logo">JL <span>Financeiro</span></div>
   <div class="month-nav">
@@ -609,7 +665,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:.85
     <div id="monthLabel"></div>
     <button onclick="changeMonth(1)">▶</button>
   </div>
-  <div class="header-actions">
+  <div class="header-actions header-desktop-actions">
     <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">🌙</button>
     <button class="btn-ghost" onclick="openPwaModal()" title="Instalar como App" style="padding:.44rem .6rem">📱</button>
     <button class="btn-ghost" onclick="openShareModal()" title="Compartilhar com parceiro" style="color:var(--accent);border-color:rgba(0,229,160,.3)">🔗 Compartilhar</button>
@@ -620,7 +676,21 @@ header{display:flex;align-items:center;justify-content:space-between;padding:.85
     <button class="btn-secondary" onclick="openSettings()">⚙ Categorias</button>
     <button id="voice-btn" onclick="toggleVoice()" title="Comando de Voz" style="background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.3);color:var(--accent);width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0">🎙️</button>
   </div>
+  <!-- Botões visíveis no mobile (tema + hambúrguer) -->
+  <div style="display:flex;gap:.4rem;align-items:center" class="mobile-only-actions">
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn-m" style="display:none">🌙</button>
+    <button id="voice-btn-mob" onclick="toggleVoice()" style="display:none;background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.3);color:var(--accent);width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:1rem;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0">🎙️</button>
+    <button class="hamburger-btn" onclick="openMobileMenu()">☰</button>
+  </div>
 </header>
+<style>
+@media(max-width:768px){
+  #theme-btn-m{display:flex!important}
+  #voice-btn-mob{display:flex!important}
+  #theme-btn{display:none!important}
+  #voice-btn{display:none!important}
+}
+</style>
 
 <!-- PAINEL DE VOZ -->
 <div id="voice-panel" style="display:none;position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;background:var(--surface);border:1px solid var(--border2);border-radius:18px;padding:1.1rem 1.3rem;width:370px;max-width:calc(100vw - 2rem);box-shadow:0 8px 32px rgba(0,0,0,.5);animation:fadeUp .25s ease">
